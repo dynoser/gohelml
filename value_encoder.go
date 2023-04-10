@@ -9,13 +9,17 @@ import (
 )
 
 func (h *HELML) ValueEncoder(value interface{}, spcCh string) (string, error) {
+	if value == (*interface{})(nil) {
+		return spcCh + spcCh + "U", nil
+	}
 	switch v := value.(type) {
 	case string:
 		var goodChars bool
 		if spcCh == "_" {
 			goodChars = regexp.MustCompile("^[ -}]+$").MatchString(v)
 		} else {
-			goodChars = regexp.MustCompile("^[^\x00-\x1F\x7E-\xFF]+$").MatchString(v)
+			goodChars = regexp.MustCompile("^[\\p{L}0-9 !\"#$%&'()*+,\\-./:;<=>?@[\\]^_`{|}~]+$").MatchString(v)
+			//goodChars = regexp.MustCompile("^[^\x00-\x1F\x7E-\xFF]+$").MatchString(v)
 		}
 		if !goodChars || len(v) == 0 {
 			return "-" + base64.URLEncoding.EncodeToString([]byte(v)), nil
@@ -31,7 +35,7 @@ func (h *HELML) ValueEncoder(value interface{}, spcCh string) (string, error) {
 			return spcCh + spcCh + "F", nil
 		}
 	case nil:
-		return spcCh + spcCh + "U", nil
+		return spcCh + spcCh + "N", nil
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return spcCh + spcCh + fmt.Sprintf("%d", v), nil
 	case float32, float64:
