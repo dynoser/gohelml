@@ -1,27 +1,9 @@
 package gohelml
 
 import (
-	"encoding/base64"
-	"math"
 	"strconv"
 	"strings"
 )
-
-type HELML struct {
-	CUSTOM_FORMAT_DECODER func(value string, spc_ch string) interface{}
-	CUSTOM_VALUE_DECODER  func(value string, spc_ch string) interface{}
-	ADD_LAYERS_KEY        bool `default:"true"`
-}
-
-var SPEC_TYPE_VALUES = map[string]interface{}{
-	"N":   nil,
-	"U":   (*interface{})(nil),
-	"T":   true,
-	"F":   false,
-	"NAN": math.NaN(),
-	"INF": math.Inf(1),
-	"NIF": math.Inf(-1),
-}
 
 func (h *HELML) Decode(src_rows string, get_layers *[]string) interface{} {
 	valueDecoFun := h.CUSTOM_VALUE_DECODER
@@ -200,82 +182,4 @@ func (h *HELML) Decode(src_rows string, get_layers *[]string) interface{} {
 	}
 
 	return result
-}
-
-func (h *HELML) ValueDecoder(encodedValue string, spc_ch string) interface{} {
-	fc := encodedValue[0]
-	if spc_ch[0] == fc {
-		if encodedValue[:2] != spc_ch+spc_ch {
-			return encodedValue[1:]
-		}
-		slicedValue := encodedValue[2:]
-		if val, ok := SPEC_TYPE_VALUES[slicedValue]; ok {
-			return val
-		}
-		if floatValue, err := strconv.ParseFloat(slicedValue, 64); err == nil {
-			intValue := int(floatValue)
-			if floatValue == float64(intValue) {
-				return intValue
-			}
-			return floatValue
-		}
-		if h.CUSTOM_FORMAT_DECODER != nil {
-			return h.CUSTOM_FORMAT_DECODER(encodedValue, spc_ch)
-		}
-		return slicedValue
-	} else if fc == '"' || fc == '\'' {
-		encodedValue = encodedValue[1 : len(encodedValue)-1]
-		if fc == '"' {
-			return h.stripcslashes(encodedValue)
-		}
-		return encodedValue
-	} else if fc == '-' {
-		encodedValue = encodedValue[1:]
-	} else if h.CUSTOM_FORMAT_DECODER != nil {
-		return h.CUSTOM_FORMAT_DECODER(encodedValue, spc_ch)
-	}
-	decoded, _ := h.base64Udecode(encodedValue)
-	return decoded
-}
-
-func (h *HELML) base64Uencode(str string) string {
-	base64Str := base64.URLEncoding.EncodeToString([]byte(str))
-	return strings.TrimRight(base64Str, "=")
-}
-
-func (h *HELML) base64Udecode(str string) (string, error) {
-	for len(str)%4 != 0 {
-		str += "="
-	}
-
-	data, err := base64.URLEncoding.DecodeString(str)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
-}
-
-func (h *HELML) stripcslashes(str string) string {
-	controlCharsMap := map[string]string{
-		"\\n":  "\n",
-		"\\t":  "\t",
-		"\\r":  "\r",
-		"\\b":  "\b",
-		"\\f":  "\f",
-		"\\v":  "\v",
-		"\\0":  "\x00",
-		"\\\\": "\\",
-	}
-	for k, v := range controlCharsMap {
-		str = strings.Replace(str, k, v, -1)
-	}
-	return str
-}
-
-func keys(m map[string]struct{}) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	return keys
 }
